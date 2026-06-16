@@ -1,10 +1,28 @@
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
 
 export default function LoginPage() {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
   const navigate = useNavigate()
+  const { profile } = useAuth()
 
-  const handleLogin = () => {
-    navigate('/timeline')
+  useEffect(() => {
+    if (profile) navigate('/timeline')
+  }, [profile])
+
+  async function handleLogin() {
+    setError('')
+    setIsLoading(true)
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) {
+      setError('이메일 또는 비밀번호가 올바르지 않습니다.')
+    }
+    setIsLoading(false)
   }
 
   return (
@@ -18,6 +36,8 @@ export default function LoginPage() {
           <input
             type="text"
             placeholder="example@email.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </div>
@@ -27,16 +47,20 @@ export default function LoginPage() {
           <input
             type="password"
             placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
             className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           />
+          {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
         </div>
 
         <button
           type="button"
           onClick={handleLogin}
-          className="mt-2 w-full rounded bg-primary py-2 text-sm font-medium text-white hover:bg-primary/90"
+          disabled={isLoading}
+          className="mt-2 w-full rounded bg-primary py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50"
         >
-          로그인
+          {isLoading ? '로그인 중...' : '로그인'}
         </button>
       </div>
     </div>

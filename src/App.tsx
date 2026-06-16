@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom'
 import Layout from './components/layout/Layout'
+import ProtectedRoute from './components/layout/ProtectedRoute'
 import LoginPage from './pages/LoginPage'
 import TimelinePage from './pages/TimelinePage'
 import NewMeetingPage from './pages/NewMeetingPage'
@@ -13,33 +14,41 @@ export default function App() {
       <Route
         path="/timeline"
         element={
-          <Layout>
-            <TimelinePage />
-          </Layout>
+          <ProtectedRoute>
+            <Layout>
+              <TimelinePage />
+            </Layout>
+          </ProtectedRoute>
         }
       />
       <Route
         path="/meeting/new"
         element={
-          <Layout>
-            <NewMeetingPage />
-          </Layout>
+          <ProtectedRoute>
+            <Layout>
+              <NewMeetingPage />
+            </Layout>
+          </ProtectedRoute>
         }
       />
       <Route
         path="/meeting/:id"
         element={
-          <Layout>
-            <MeetingDetailPage />
-          </Layout>
+          <ProtectedRoute>
+            <Layout>
+              <MeetingDetailPage />
+            </Layout>
+          </ProtectedRoute>
         }
       />
       <Route
         path="/settings"
         element={
-          <Layout>
-            <SettingsPage />
-          </Layout>
+          <ProtectedRoute>
+            <Layout>
+              <SettingsPage />
+            </Layout>
+          </ProtectedRoute>
         }
       />
     </Routes>

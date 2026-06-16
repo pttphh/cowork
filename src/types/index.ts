@@ -17,3 +17,10 @@ export interface SidebarGroup {
   name: string
   items: SidebarItem[]
 }
+
+export interface Profile {
+  id: string
+  name: string
+  role: UserRole
+  created_at: string
+}

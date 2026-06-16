@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { SidebarGroup } from '../../types'
+import { useAuth } from '../../context/AuthContext'
+import { SidebarGroup, UserRole } from '../../types'
 
 const SIDEBAR_GROUPS: SidebarGroup[] = [
   {
@@ -29,9 +30,17 @@ const SIDEBAR_GROUPS: SidebarGroup[] = [
   },
 ]
 
+const ROLE_LABELS: Record<UserRole, string> = {
+  ceo: '대표이사',
+  secretary: '비서',
+  sales_manager: '영업 매니저',
+  sales_staff: '영업 직원',
+}
+
 export default function Sidebar() {
   const location = useLocation()
   const navigate = useNavigate()
+  const { profile, signOut } = useAuth()
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
     'biz-general': true,
     retail: true,
@@ -46,6 +55,12 @@ export default function Sidebar() {
 
   const isTimelineActive = location.pathname === '/timeline'
 
+  async function handleSignOut() {
+    setDropdownOpen(false)
+    await signOut()
+    navigate('/')
+  }
+
   return (
     <aside className="flex w-48 shrink-0 flex-col border-r border-gray-200 bg-sidebar-bg">
       <div className="border-b border-gray-200 p-3">
@@ -59,7 +74,7 @@ export default function Sidebar() {
             onClick={() => setDropdownOpen(!dropdownOpen)}
             className="w-full text-left text-sm font-medium text-gray-900 hover:text-primary"
           >
-            홍길동
+            {profile?.name ?? '—'}
           </button>
           {dropdownOpen && (
             <div className="absolute left-0 top-full z-10 mt-1 w-full rounded-md border border-gray-200 bg-white py-1 shadow-md">
@@ -73,17 +88,16 @@ export default function Sidebar() {
               <button
                 type="button"
                 className="block w-full px-3 py-1.5 text-left text-xs text-gray-700 hover:bg-gray-50"
-                onClick={() => {
-                  setDropdownOpen(false)
-                  navigate('/')
-                }}
+                onClick={handleSignOut}
               >
                 로그아웃
               </button>
             </div>
           )}
         </div>
-        <div className="mt-0.5 text-xs text-gray-500">대표이사</div>
+        <div className="mt-0.5 text-xs text-gray-500">
+          {profile?.role ? ROLE_LABELS[profile.role] : '—'}
+        </div>
       </div>
 
       <nav className="flex-1 overflow-y-auto p-2">

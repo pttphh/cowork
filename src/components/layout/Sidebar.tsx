@@ -116,8 +116,8 @@ export default function Sidebar() {
   return (
     <aside className="flex w-48 shrink-0 flex-col border-r border-gray-200 bg-sidebar-bg">
       <div className="border-b border-gray-200 p-3">
-        <div className="text-sm font-semibold text-gray-900">협업툴</div>
-      </div>
+      <button onClick={() => navigate('/timeline')} className="text-sm font-semibold text-gray-900 hover:text-primary transition-colors">협업툴</button>
+            </div>
 
       <div className="border-b border-gray-200 p-3">
         <div className="relative">

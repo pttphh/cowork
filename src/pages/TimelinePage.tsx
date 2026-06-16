@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
+import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { Meeting, TodoStatus, TodoWithRelations } from '../types'
 
@@ -70,6 +71,8 @@ function matchesStatusFilter(meeting: Meeting, filter: StatusFilter) {
 }
 
 export default function TimelinePage() {
+  const navigate = useNavigate()
+  const { profile } = useAuth()
   const [mainTab, setMainTab] = useState<MainTab>('timeline')
   const [feedSubTab, setFeedSubTab] = useState<FeedSubTab>('byPerson')
   const [meetingFilter, setMeetingFilter] = useState<MeetingFilter>('all')
@@ -81,6 +84,8 @@ export default function TimelinePage() {
   const [error, setError] = useState('')
   const [feedError, setFeedError] = useState('')
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({})
+  const [memoInputs, setMemoInputs] = useState<Record<string, string>>({})
+  const [memoSaving, setMemoSaving] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     loadMeetings()
@@ -181,6 +186,34 @@ export default function TimelinePage() {
 
   const toggleCard = (id: string) => {
     setExpandedCards((prev) => ({ ...prev, [id]: !prev[id] }))
+  }
+
+  async function handleAddMemo(todoId: string) {
+    const content = memoInputs[todoId]?.trim()
+    if (!content || !profile) return
+
+    setMemoSaving((prev) => ({ ...prev, [todoId]: true }))
+    try {
+      const { error: insertError } = await supabase.from('todo_memos').insert({
+        todo_id: todoId,
+        content,
+        created_by: profile.id,
+      })
+
+      if (insertError) {
+        console.error(insertError)
+        alert('메모 저장에 실패했습니다.')
+        return
+      }
+
+      setMemoInputs((prev) => ({ ...prev, [todoId]: '' }))
+      await loadFeedData()
+    } catch (err) {
+      console.error(err)
+      alert('메모 저장에 실패했습니다.')
+    } finally {
+      setMemoSaving((prev) => ({ ...prev, [todoId]: false }))
+    }
   }
 
   return (
@@ -312,12 +345,13 @@ export default function TimelinePage() {
                               <p className="mb-3 text-xs text-gray-400">등록된 Todo가 없습니다.</p>
                             )}
                             <div className="flex items-center justify-between border-t border-gray-100 pt-3">
-                              <Link
-                                to={`/meeting/${meeting.id}`}
+                              <button
+                                type="button"
+                                onClick={() => navigate(`/meeting/${meeting.id}`)}
                                 className="text-xs text-primary hover:underline"
                               >
                                 상세
-                              </Link>
+                              </button>
                               <div className="flex gap-2">
                                 <Button variant="secondary" size="sm">
                                   수정
@@ -409,9 +443,19 @@ export default function TimelinePage() {
                               <input
                                 type="text"
                                 placeholder="진행사항 입력..."
+                                value={memoInputs[todo.id] ?? ''}
+                                onChange={(e) =>
+                                  setMemoInputs((prev) => ({ ...prev, [todo.id]: e.target.value }))
+                                }
                                 className="flex-1 rounded border border-gray-300 px-2 py-1 text-xs focus:border-primary focus:outline-none"
                               />
-                              <Button size="sm">저장</Button>
+                              <Button
+                                size="sm"
+                                onClick={() => handleAddMemo(todo.id)}
+                                disabled={memoSaving[todo.id]}
+                              >
+                                {memoSaving[todo.id] ? '저장 중...' : '저장'}
+                              </Button>
                             </div>
                           </div>
                         </div>
@@ -462,9 +506,19 @@ export default function TimelinePage() {
                         <input
                           type="text"
                           placeholder="진행사항 입력..."
+                          value={memoInputs[todo.id] ?? ''}
+                          onChange={(e) =>
+                            setMemoInputs((prev) => ({ ...prev, [todo.id]: e.target.value }))
+                          }
                           className="flex-1 rounded border border-gray-300 px-2 py-1 text-xs focus:border-primary focus:outline-none"
                         />
-                        <Button size="sm">저장</Button>
+                        <Button
+                          size="sm"
+                          onClick={() => handleAddMemo(todo.id)}
+                          disabled={memoSaving[todo.id]}
+                        >
+                          {memoSaving[todo.id] ? '저장 중...' : '저장'}
+                        </Button>
                       </div>
                     </div>
                   )

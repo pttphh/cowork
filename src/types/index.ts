@@ -36,6 +36,12 @@ export interface Category {
   id: string
   name: string
   sort_order: number
+  type?: string
+}
+
+export interface Person {
+  id: string
+  name: string
 }
 
 export interface DbProject {
@@ -65,7 +71,9 @@ export interface MeetingTodo {
   detail: string | null
   status: TodoStatus
   sort_order: number
+  agenda_id?: string | null
   people?: { name: string } | null
+  todo_memos?: { id: string; content: string; created_at: string }[]
 }
 
 export interface Meeting {
@@ -73,12 +81,17 @@ export interface Meeting {
   title: string
   meeting_date: string
   status: MeetingStatus
+  notice?: string | null
   project_id?: string | null
+  created_by?: string
   projects?: {
     name: string
     is_regular: boolean
     page_type?: PageType | null
+    business_units?: { name: string } | null
+    categories?: { name: string } | null
   } | null
+  meeting_attendees?: { people: { name: string } | null }[]
   meeting_agendas?: MeetingAgenda[]
   todos?: MeetingTodo[]
 }

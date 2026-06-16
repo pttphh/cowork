@@ -1,54 +1,24 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
-import { UserRole } from '../types'
+import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
+import {
+  BusinessUnitWithProjects,
+  Category,
+  DbProject,
+  Profile,
+  UserRole,
+} from '../types'
 
 type SettingsTab = 'category' | 'division' | 'meeting' | 'account'
 type MeetingSubTab = 'regular' | 'active' | 'done'
 
-const CATEGORIES = [
-  'Bz 정기회의',
-  'Bz 성과 관리',
-  'Bz 조직 운영',
-  'Bz 전략 기획',
-  '사적인 삶 (여유)',
-  '사적인 삶 (성장)',
-  '사적인 삶 (관계)',
-]
-
-const DIVISIONS = [
-  { name: '비즈니스 일반', projects: 2, regulars: 1 },
-  { name: '리테일', projects: 1, regulars: 1 },
-]
-
-const REGULAR_MEETINGS = [
-  { name: '주간 경영 점검', division: '비즈니스 일반', attendees: '홍길동, 김철수' },
-  { name: '점검회의 (상품)', division: '리테일', attendees: '이영희, 박민수' },
-]
-
-const ACTIVE_PROJECTS = [
-  { name: '가맹사업 TFT', division: '비즈니스 일반', category: 'Bz 전략 기획' },
-  { name: '물류센터 개선', division: '비즈니스 일반', category: 'Bz 조직 운영' },
-  { name: '리테일 브랜드 리뉴얼', division: '리테일', category: 'Bz 성과 관리' },
-]
-
-const DONE_PROJECTS = [
-  { name: 'ERP 시스템 전환', completedAt: '2026-03-15' },
-  { name: '매장 리뉴얼 1차', completedAt: '2026-01-20' },
-]
-
-const USERS: { name: string; role: UserRole; email: string }[] = [
-  { name: '홍길동', role: 'ceo', email: 'ceo@example.com' },
-  { name: '김비서', role: 'secretary', email: 'secretary@example.com' },
-  { name: '이매니저', role: 'sales_manager', email: 'sales.mgr@example.com' },
-  { name: '박직원', role: 'sales_staff', email: 'sales@example.com' },
-]
-
 const ROLE_LABELS: Record<UserRole, string> = {
-  ceo: '대표이사',
+  ceo: '경영자',
   secretary: '비서',
-  sales_manager: '영업 매니저',
-  sales_staff: '영업 직원',
+  sales_manager: '영업(관리)',
+  sales_staff: '영업(실무)',
 }
 
 const ROLE_VARIANTS: Record<UserRole, 'primary' | 'success' | 'warning'> = {
@@ -65,9 +35,125 @@ const SETTINGS_TABS: { key: SettingsTab; label: string }[] = [
   { key: 'account', label: '계정' },
 ]
 
+function formatAttendees(project: DbProject) {
+  const names =
+    project.project_attendees
+      ?.map((a) => a.people?.name)
+      .filter((n): n is string => !!n) ?? []
+  return names.length > 0 ? names.join(', ') : '—'
+}
+
 export default function SettingsPage() {
+  const { profile } = useAuth()
   const [activeTab, setActiveTab] = useState<SettingsTab>('category')
   const [meetingSubTab, setMeetingSubTab] = useState<MeetingSubTab>('regular')
+
+  const [categories, setCategories] = useState<Category[]>([])
+  const [bizUnits, setBizUnits] = useState<BusinessUnitWithProjects[]>([])
+  const [regularMeetings, setRegularMeetings] = useState<DbProject[]>([])
+  const [activeProjects, setActiveProjects] = useState<DbProject[]>([])
+  const [doneProjects, setDoneProjects] = useState<DbProject[]>([])
+  const [profiles, setProfiles] = useState<Profile[]>([])
+
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    loadAllData()
+  }, [])
+
+  async function loadAllData() {
+    setLoading(true)
+    setError('')
+
+    try {
+      const [
+        categoriesRes,
+        bizUnitsRes,
+        regularRes,
+        activeRes,
+        doneRes,
+        profilesRes,
+      ] = await Promise.all([
+        supabase.from('categories').select('*').order('sort_order'),
+        supabase
+          .from('business_units')
+          .select('*, projects(id, is_regular)')
+          .order('sort_order'),
+        supabase
+          .from('projects')
+          .select(`
+            *,
+            business_units(name),
+            project_attendees(people(name))
+          `)
+          .eq('is_regular', true)
+          .order('name'),
+        supabase
+          .from('projects')
+          .select(`
+            *,
+            business_units(name),
+            categories(name),
+            project_attendees(people(name))
+          `)
+          .eq('is_regular', false)
+          .eq('status', 'active')
+          .order('name'),
+        supabase
+          .from('projects')
+          .select(`
+            *,
+            business_units(name),
+            categories(name)
+          `)
+          .eq('is_regular', false)
+          .eq('status', 'done')
+          .order('completed_at', { ascending: false }),
+        supabase.from('profiles').select('*').order('created_at'),
+      ])
+
+      const hasError =
+        categoriesRes.error ||
+        bizUnitsRes.error ||
+        regularRes.error ||
+        activeRes.error ||
+        doneRes.error ||
+        profilesRes.error
+
+      if (hasError) {
+        setError('데이터를 불러올 수 없습니다.')
+        return
+      }
+
+      if (categoriesRes.data) setCategories(categoriesRes.data)
+      if (bizUnitsRes.data) setBizUnits(bizUnitsRes.data as BusinessUnitWithProjects[])
+      if (regularRes.data) setRegularMeetings(regularRes.data as DbProject[])
+      if (activeRes.data) setActiveProjects(activeRes.data as DbProject[])
+      if (doneRes.data) setDoneProjects(doneRes.data as DbProject[])
+      if (profilesRes.data) setProfiles(profilesRes.data)
+    } catch {
+      setError('데이터를 불러올 수 없습니다.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center p-6">
+        <div className="text-sm text-gray-400">로딩 중...</div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center p-6">
+        <div className="text-sm text-red-500">{error}</div>
+      </div>
+    )
+  }
 
   return (
     <div className="p-6">
@@ -92,21 +178,25 @@ export default function SettingsPage() {
 
       {activeTab === 'category' && (
         <div>
-          <ul className="mb-4 divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">
-            {CATEGORIES.map((name) => (
-              <li key={name} className="flex items-center justify-between px-4 py-3">
-                <span className="text-sm text-gray-800">{name}</span>
-                <div className="flex gap-2">
-                  <Button variant="ghost" size="sm">
-                    수정
-                  </Button>
-                  <Button variant="ghost" size="sm" className="text-danger">
-                    삭제
-                  </Button>
-                </div>
-              </li>
-            ))}
-          </ul>
+          {categories.length === 0 ? (
+            <p className="mb-4 text-sm text-gray-400">등록된 항목이 없습니다.</p>
+          ) : (
+            <ul className="mb-4 divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">
+              {categories.map((cat) => (
+                <li key={cat.id} className="flex items-center justify-between px-4 py-3">
+                  <span className="text-sm text-gray-800">{cat.name}</span>
+                  <div className="flex gap-2">
+                    <Button variant="ghost" size="sm">
+                      수정
+                    </Button>
+                    <Button variant="ghost" size="sm" className="text-danger">
+                      삭제
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
           <Button variant="secondary" size="sm">
             + 추가
           </Button>
@@ -115,25 +205,34 @@ export default function SettingsPage() {
 
       {activeTab === 'division' && (
         <div>
-          <ul className="mb-4 divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">
-            {DIVISIONS.map((d) => (
-              <li key={d.name} className="flex items-center justify-between px-4 py-3">
-                <div className="flex items-center gap-6">
-                  <span className="text-sm font-medium text-gray-800">{d.name}</span>
-                  <span className="text-xs text-gray-500">프로젝트 {d.projects}개</span>
-                  <span className="text-xs text-gray-500">정기회의 {d.regulars}개</span>
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="ghost" size="sm">
-                    수정
-                  </Button>
-                  <Button variant="ghost" size="sm" className="text-danger">
-                    삭제
-                  </Button>
-                </div>
-              </li>
-            ))}
-          </ul>
+          {bizUnits.length === 0 ? (
+            <p className="mb-4 text-sm text-gray-400">등록된 항목이 없습니다.</p>
+          ) : (
+            <ul className="mb-4 divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">
+              {bizUnits.map((d) => {
+                const projectCount = d.projects?.filter((p) => !p.is_regular).length ?? 0
+                const regularCount = d.projects?.filter((p) => p.is_regular).length ?? 0
+
+                return (
+                  <li key={d.id} className="flex items-center justify-between px-4 py-3">
+                    <div className="flex items-center gap-6">
+                      <span className="text-sm font-medium text-gray-800">{d.name}</span>
+                      <span className="text-xs text-gray-500">프로젝트 {projectCount}개</span>
+                      <span className="text-xs text-gray-500">정기회의 {regularCount}개</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="ghost" size="sm">
+                        수정
+                      </Button>
+                      <Button variant="ghost" size="sm" className="text-danger">
+                        삭제
+                      </Button>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
           <Button variant="secondary" size="sm">
             + 추가
           </Button>
@@ -166,71 +265,99 @@ export default function SettingsPage() {
           </div>
 
           {meetingSubTab === 'regular' && (
-            <ul className="mb-4 divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">
-              {REGULAR_MEETINGS.map((m) => (
-                <li key={m.name} className="flex items-center justify-between px-4 py-3">
-                  <div className="flex flex-wrap items-center gap-4">
-                    <span className="text-sm font-medium text-gray-800">{m.name}</span>
-                    <span className="text-xs text-gray-500">{m.division}</span>
-                    <span className="text-xs text-gray-400">디폴트: {m.attendees}</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="ghost" size="sm">
-                      수정
-                    </Button>
-                    <Button variant="ghost" size="sm" className="text-danger">
-                      삭제
-                    </Button>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <>
+              {regularMeetings.length === 0 ? (
+                <p className="mb-4 text-sm text-gray-400">등록된 항목이 없습니다.</p>
+              ) : (
+                <ul className="mb-4 divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">
+                  {regularMeetings.map((m) => (
+                    <li key={m.id} className="flex items-center justify-between px-4 py-3">
+                      <div className="flex flex-wrap items-center gap-4">
+                        <span className="text-sm font-medium text-gray-800">{m.name}</span>
+                        <span className="text-xs text-gray-500">
+                          {m.business_units?.name ?? '—'}
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          디폴트: {formatAttendees(m)}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="sm">
+                          수정
+                        </Button>
+                        <Button variant="ghost" size="sm" className="text-danger">
+                          삭제
+                        </Button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
           )}
 
           {meetingSubTab === 'active' && (
-            <ul className="mb-4 divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">
-              {ACTIVE_PROJECTS.map((p) => (
-                <li key={p.name} className="flex items-center justify-between px-4 py-3">
-                  <div className="flex flex-wrap items-center gap-4">
-                    <span className="text-sm font-medium text-gray-800">{p.name}</span>
-                    <span className="text-xs text-gray-500">{p.division}</span>
-                    <span className="text-xs text-gray-400">{p.category}</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="ghost" size="sm">
-                      수정
-                    </Button>
-                    <Button variant="ghost" size="sm">
-                      완료
-                    </Button>
-                    <Button variant="ghost" size="sm" className="text-danger">
-                      삭제
-                    </Button>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <>
+              {activeProjects.length === 0 ? (
+                <p className="mb-4 text-sm text-gray-400">등록된 항목이 없습니다.</p>
+              ) : (
+                <ul className="mb-4 divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">
+                  {activeProjects.map((p) => (
+                    <li key={p.id} className="flex items-center justify-between px-4 py-3">
+                      <div className="flex flex-wrap items-center gap-4">
+                        <span className="text-sm font-medium text-gray-800">{p.name}</span>
+                        <span className="text-xs text-gray-500">
+                          {p.business_units?.name ?? '—'}
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          {p.categories?.name ?? '—'}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="sm">
+                          수정
+                        </Button>
+                        <Button variant="ghost" size="sm">
+                          완료
+                        </Button>
+                        <Button variant="ghost" size="sm" className="text-danger">
+                          삭제
+                        </Button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
           )}
 
           {meetingSubTab === 'done' && (
-            <ul className="mb-4 divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">
-              {DONE_PROJECTS.map((p) => (
-                <li key={p.name} className="flex items-center justify-between px-4 py-3">
-                  <div className="flex items-center gap-4">
-                    <span className="text-sm text-gray-400">{p.name}</span>
-                    <span className="text-xs text-gray-400">완료일: {p.completedAt}</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="ghost" size="sm">
-                      재활성화
-                    </Button>
-                    <Button variant="ghost" size="sm" className="text-danger">
-                      삭제
-                    </Button>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <>
+              {doneProjects.length === 0 ? (
+                <p className="mb-4 text-sm text-gray-400">등록된 항목이 없습니다.</p>
+              ) : (
+                <ul className="mb-4 divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">
+                  {doneProjects.map((p) => (
+                    <li key={p.id} className="flex items-center justify-between px-4 py-3">
+                      <div className="flex items-center gap-4">
+                        <span className="text-sm text-gray-400">{p.name}</span>
+                        <span className="text-xs text-gray-400">
+                          완료일: {p.completed_at ?? '—'}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="sm">
+                          재활성화
+                        </Button>
+                        <Button variant="ghost" size="sm" className="text-danger">
+                          삭제
+                        </Button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
           )}
 
           <Button variant="secondary" size="sm">
@@ -241,28 +368,34 @@ export default function SettingsPage() {
 
       {activeTab === 'account' && (
         <div>
-          <ul className="mb-6 divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">
-            {USERS.map((user) => (
-              <li key={user.email} className="flex items-center justify-between px-4 py-3">
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className="text-sm font-medium text-gray-800">{user.name}</span>
-                  <Badge variant={ROLE_VARIANTS[user.role]}>{ROLE_LABELS[user.role]}</Badge>
-                  <span className="text-xs text-gray-500">{user.email}</span>
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="ghost" size="sm">
-                    수정
-                  </Button>
-                  <Button variant="ghost" size="sm" className="text-danger">
-                    삭제
-                  </Button>
-                </div>
-              </li>
-            ))}
-          </ul>
+          {profiles.length === 0 ? (
+            <p className="mb-6 text-sm text-gray-400">등록된 항목이 없습니다.</p>
+          ) : (
+            <ul className="mb-6 divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">
+              {profiles.map((user) => (
+                <li key={user.id} className="flex items-center justify-between px-4 py-3">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="text-sm font-medium text-gray-800">{user.name}</span>
+                    <Badge variant={ROLE_VARIANTS[user.role]}>{ROLE_LABELS[user.role]}</Badge>
+                    <span className="text-xs text-gray-500">{user.email ?? user.id}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="ghost" size="sm">
+                      수정
+                    </Button>
+                    <Button variant="ghost" size="sm" className="text-danger">
+                      삭제
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
 
           <div className="rounded-xl border border-gray-200 bg-white p-4">
-            <div className="mb-3 text-sm font-medium text-gray-800">내 계정 — 홍길동</div>
+            <div className="mb-3 text-sm font-medium text-gray-800">
+              내 계정 — {profile?.name ?? '—'}
+            </div>
             <div className="flex gap-2">
               <Button variant="secondary" size="sm">
                 비밀번호 변경

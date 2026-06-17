@@ -1,6 +1,1 @@
 node_modules/.bin/* eol=lf
-node_modules
-dist
-.env
-.env.local
-.DS_Store

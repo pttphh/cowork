@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Button from '../components/ui/Button'
+import CreateMeetingTypeModal from '../components/ui/CreateMeetingTypeModal'
+import CreateProjectModal from '../components/ui/CreateProjectModal'
+import PersonTagInput from '../components/ui/PersonTagInput'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { BusinessUnit, Category, DbProject, Person } from '../types'
@@ -51,13 +54,14 @@ export default function NewMeetingPage() {
     new Date().toISOString().slice(0, 10),
   )
   const [notice, setNotice] = useState('')
-  const [selectedAttendeeIds, setSelectedAttendeeIds] = useState<string[]>([])
-  const [attendeeToAdd, setAttendeeToAdd] = useState('')
+  const [selectedAttendees, setSelectedAttendees] = useState<Person[]>([])
   const [agendas, setAgendas] = useState<FormAgenda[]>([
     { id: 1, order: 1, subject: '안건 1', content: '', todos: [] },
   ])
   const [todoInput, setTodoInput] = useState({ title: '', personId: '' })
   const [activeAgendaId, setActiveAgendaId] = useState(1)
+  const [showProjectModal, setShowProjectModal] = useState(false)
+  const [showMeetingTypeModal, setShowMeetingTypeModal] = useState(false)
 
   const selectedCategory = categories.find((c) => c.id === selectedCategoryId)
   const isBz = selectedCategory ? isBzCategory(selectedCategory) : false
@@ -87,6 +91,34 @@ export default function NewMeetingPage() {
     loadProjects()
   }, [selectedCategoryId, selectedBizUnitId, isPersonal])
 
+  useEffect(() => {
+    if (!selectedProjectId) {
+      setSelectedAttendees([])
+      return
+    }
+
+    async function loadProjectAttendees() {
+      const { data, error } = await supabase
+        .from('project_attendees')
+        .select('people(id, name)')
+        .eq('project_id', selectedProjectId)
+
+      if (error) {
+        console.error(error)
+        return
+      }
+
+      const people =
+        data
+          ?.map((row) => row.people)
+          .filter((p): p is { id: string; name: string } => !!p) ?? []
+
+      setSelectedAttendees(people)
+    }
+
+    loadProjectAttendees()
+  }, [selectedProjectId])
+
   async function loadFormData() {
     setDataLoading(true)
     try {
@@ -112,7 +144,7 @@ export default function NewMeetingPage() {
     }
   }
 
-  async function loadProjects() {
+  async function loadProjects(selectId?: string) {
     if (!selectedCategoryId) {
       setProjects([])
       return
@@ -134,17 +166,22 @@ export default function NewMeetingPage() {
       console.error(fetchError)
       return
     }
-    if (data) setProjects(data)
+    if (data) {
+      setProjects(data)
+      if (selectId) setSelectedProjectId(selectId)
+    }
   }
 
-  function addAttendee() {
-    if (!attendeeToAdd || selectedAttendeeIds.includes(attendeeToAdd)) return
-    setSelectedAttendeeIds([...selectedAttendeeIds, attendeeToAdd])
-    setAttendeeToAdd('')
+  function handleProjectCreated(projectId: string, attendees: Person[]) {
+    setSelectedProjectId(projectId)
+    setSelectedAttendees(attendees)
+    loadProjects(projectId)
   }
 
-  function removeAttendee(personId: string) {
-    setSelectedAttendeeIds(selectedAttendeeIds.filter((id) => id !== personId))
+  function handleMeetingTypeCreated(projectId: string, attendees: Person[]) {
+    setSelectedProjectId(projectId)
+    setSelectedAttendees(attendees)
+    loadProjects(projectId)
   }
 
   function addTodo(agendaId: number) {
@@ -228,11 +265,11 @@ export default function NewMeetingPage() {
         return
       }
 
-      if (selectedAttendeeIds.length > 0) {
+      if (selectedAttendees.length > 0) {
         const { error: attendeeError } = await supabase.from('meeting_attendees').insert(
-          selectedAttendeeIds.map((personId) => ({
+          selectedAttendees.map((person) => ({
             meeting_id: meeting.id,
-            person_id: personId,
+            person_id: person.id,
           })),
         )
         if (attendeeError) console.error(attendeeError)
@@ -354,9 +391,9 @@ export default function NewMeetingPage() {
               {showMeetingTypes ? '회의종류' : '프로젝트'}
             </label>
             {filteredProjects.length === 0 ? (
-              <p className="text-xs text-gray-400">선택 가능한 항목이 없습니다.</p>
+              <p className="mb-2 text-xs text-gray-400">선택 가능한 항목이 없습니다.</p>
             ) : (
-              <div className="flex flex-wrap gap-2">
+              <div className="mb-2 flex flex-wrap gap-2">
                 {filteredProjects.map((item) => (
                   <button
                     key={item.id}
@@ -372,6 +409,23 @@ export default function NewMeetingPage() {
                   </button>
                 ))}
               </div>
+            )}
+            {showMeetingTypes ? (
+              <button
+                type="button"
+                onClick={() => setShowMeetingTypeModal(true)}
+                className="rounded-full border border-dashed border-gray-300 px-3 py-1 text-xs text-gray-500 hover:border-primary hover:text-primary"
+              >
+                + 새 정기회의 등록
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowProjectModal(true)}
+                className="rounded-full border border-dashed border-gray-300 px-3 py-1 text-xs text-gray-500 hover:border-primary hover:text-primary"
+              >
+                + 새 프로젝트 등록
+              </button>
             )}
           </div>
         )}
@@ -412,42 +466,7 @@ export default function NewMeetingPage() {
         </div>
         <div>
           <label className="mb-2 block text-xs text-gray-500">참석자</label>
-          <div className="mb-2 flex flex-wrap items-center gap-2">
-            {selectedAttendeeIds.map((personId) => (
-              <span
-                key={personId}
-                className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-700"
-              >
-                {getPersonName(personId)}
-                <button
-                  type="button"
-                  onClick={() => removeAttendee(personId)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <select
-              value={attendeeToAdd}
-              onChange={(e) => setAttendeeToAdd(e.target.value)}
-              className="flex-1 rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-primary focus:outline-none"
-            >
-              <option value="">참석자 선택</option>
-              {people
-                .filter((p) => !selectedAttendeeIds.includes(p.id))
-                .map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-            </select>
-            <Button type="button" size="sm" variant="secondary" onClick={addAttendee}>
-              + 추가
-            </Button>
-          </div>
+          <PersonTagInput value={selectedAttendees} onChange={setSelectedAttendees} />
         </div>
       </div>
 
@@ -545,6 +564,26 @@ export default function NewMeetingPage() {
           </Button>
         </div>
       </div>
+
+      <CreateProjectModal
+        open={showProjectModal}
+        onClose={() => setShowProjectModal(false)}
+        categories={categories}
+        bizUnits={bizUnits}
+        defaultCategoryId={selectedCategoryId}
+        defaultBizUnitId={selectedBizUnitId}
+        isPersonal={isPersonal}
+        onSuccess={handleProjectCreated}
+      />
+
+      <CreateMeetingTypeModal
+        open={showMeetingTypeModal}
+        onClose={() => setShowMeetingTypeModal(false)}
+        categories={categories}
+        bizUnits={bizUnits}
+        defaultBizUnitId={selectedBizUnitId}
+        onSuccess={handleMeetingTypeCreated}
+      />
     </div>
   )
 }

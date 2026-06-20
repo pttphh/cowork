@@ -11,7 +11,12 @@ const ROLE_LABELS: Record<UserRole, string> = {
   sales_staff: '영업 직원',
 }
 
-export default function Sidebar() {
+interface SidebarProps {
+  width: number
+  onResize: (width: number) => void
+}
+
+export default function Sidebar({ width, onResize }: SidebarProps) {
   const location = useLocation()
   const navigate = useNavigate()
   const { profile, signOut } = useAuth()
@@ -21,10 +26,34 @@ export default function Sidebar() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [isResizing, setIsResizing] = useState(false)
 
   useEffect(() => {
     loadSidebarData()
   }, [])
+
+  useEffect(() => {
+    if (!isResizing) return
+
+    document.body.style.userSelect = 'none'
+
+    function handleMouseMove(e: MouseEvent) {
+      onResize(e.clientX)
+    }
+
+    function handleMouseUp() {
+      setIsResizing(false)
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+
+    return () => {
+      document.body.style.userSelect = ''
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isResizing, onResize])
 
   async function loadSidebarData() {
     setLoading(true)
@@ -113,11 +142,25 @@ export default function Sidebar() {
     navigate('/')
   }
 
+  function handleResizeStart(e: React.MouseEvent) {
+    e.preventDefault()
+    setIsResizing(true)
+  }
+
   return (
-    <aside className="flex w-48 shrink-0 flex-col border-r border-gray-200 bg-sidebar-bg">
+    <aside
+      className="relative flex shrink-0 flex-col border-r border-gray-200 bg-sidebar-bg"
+      style={{ width }}
+    >
       <div className="border-b border-gray-200 p-3">
-      <button onClick={() => navigate('/timeline')} className="text-sm font-semibold text-gray-900 hover:text-primary transition-colors">협업툴</button>
-            </div>
+        <button
+          type="button"
+          onClick={() => navigate('/timeline')}
+          className="text-sm font-semibold text-gray-900 transition-colors hover:text-primary"
+        >
+          프로젝트 관리 툴
+        </button>
+      </div>
 
       <div className="border-b border-gray-200 p-3">
         <div className="relative">
@@ -234,6 +277,15 @@ export default function Sidebar() {
           <span>설정</span>
         </Link>
       </div>
+
+      <div
+        role="separator"
+        aria-orientation="vertical"
+        onMouseDown={handleResizeStart}
+        className={`absolute right-0 top-0 h-full w-1 cursor-col-resize transition-colors hover:bg-primary/30 ${
+          isResizing ? 'bg-primary/30' : ''
+        }`}
+      />
     </aside>
   )
 }

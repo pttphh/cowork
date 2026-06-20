@@ -470,16 +470,18 @@ export default function MeetingDetailPage() {
             ))}
           </div>
         ) : sortedAgendas.length === 0 ? (
-          <p className="text-sm text-gray-400">등록된 안건이 없습니다.</p>
+          <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-400">
+            등록된 안건이 없습니다.
+          </div>
         ) : (
-          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-            <table className="w-full text-sm">
+          <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+            <table className="w-full border-collapse text-sm">
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50">
-                  <th className="w-1/4 px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wide text-gray-400">
+                <tr className="bg-gray-50">
+                  <th className="w-1/4 border-b border-gray-200 px-4 py-2.5 text-left text-xs font-medium text-gray-500">
                     주제
                   </th>
-                  <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wide text-gray-400">
+                  <th className="border-b border-gray-200 px-4 py-2.5 text-left text-xs font-medium text-gray-500">
                     내용
                   </th>
                 </tr>
@@ -514,25 +516,27 @@ export default function MeetingDetailPage() {
           실행 항목
         </h2>
         {sortedTodos.length === 0 ? (
-          <p className="text-sm text-gray-400">등록된 실행 항목이 없습니다.</p>
+          <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-400">
+            등록된 실행 항목이 없습니다.
+          </div>
         ) : (
-          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-            <table className="w-full text-sm">
+          <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+            <table className="w-full border-collapse text-sm">
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50">
-                  <th className="w-10 px-3 py-2.5 text-left text-xs font-medium uppercase tracking-wide text-gray-400">
+                <tr className="bg-gray-50">
+                  <th className="w-10 border-b border-gray-200 px-3 py-2.5 text-left text-xs font-medium text-gray-500">
                     #
                   </th>
-                  <th className="px-3 py-2.5 text-left text-xs font-medium uppercase tracking-wide text-gray-400">
+                  <th className="border-b border-gray-200 px-3 py-2.5 text-left text-xs font-medium text-gray-500">
                     담당자
                   </th>
-                  <th className="px-3 py-2.5 text-left text-xs font-medium uppercase tracking-wide text-gray-400">
+                  <th className="border-b border-gray-200 px-3 py-2.5 text-left text-xs font-medium text-gray-500">
                     실행사항
                   </th>
-                  <th className="px-3 py-2.5 text-left text-xs font-medium uppercase tracking-wide text-gray-400">
+                  <th className="border-b border-gray-200 px-3 py-2.5 text-left text-xs font-medium text-gray-500">
                     내용
                   </th>
-                  <th className="px-3 py-2.5 text-left text-xs font-medium uppercase tracking-wide text-gray-400">
+                  <th className="border-b border-gray-200 px-3 py-2.5 text-left text-xs font-medium text-gray-500">
                     상태
                   </th>
                 </tr>

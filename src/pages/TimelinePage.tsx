@@ -24,10 +24,18 @@ const STATUS_LABELS: Record<TodoStatus, string> = {
   done: '완료',
 }
 
-const STATUS_EMOJI: Record<TodoStatus, string> = {
-  pending: '⚪',
-  in_progress: '🟡',
-  done: '🟢',
+// 상태를 색상 뱃지로 즉각 인지할 수 있도록 매핑 (대기=회색, 진행중=주황, 완료=초록)
+const TODO_STATUS_VARIANT: Record<TodoStatus, 'gray' | 'warning' | 'success'> = {
+  pending: 'gray',
+  in_progress: 'warning',
+  done: 'success',
+}
+
+// 카테고리는 작은 색상 점으로만 구분해 시선을 빼앗지 않도록 처리
+const MEETING_TYPE_DOT: Record<string, string> = {
+  정기회의: 'bg-primary',
+  '프로젝트 미팅': 'bg-success',
+  개별이슈: 'bg-warning',
 }
 
 function formatDateLabel(dateStr: string) {
@@ -217,16 +225,17 @@ export default function TimelinePage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex gap-1">
+    <div className="mx-auto max-w-5xl px-6 py-8">
+      {/* 상단 탭 + 액션 */}
+      <div className="mb-8 flex items-end justify-between border-b border-gray-200">
+        <div className="flex gap-6">
           <button
             type="button"
             onClick={() => setMainTab('timeline')}
-            className={`rounded-t px-4 py-2 text-sm font-medium ${
+            className={`-mb-px border-b-2 pb-3 text-sm font-semibold transition-colors ${
               mainTab === 'timeline'
-                ? 'border-b-2 border-primary text-primary'
-                : 'text-gray-500 hover:text-gray-700'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-gray-400 hover:text-gray-600'
             }`}
           >
             타임라인
@@ -234,34 +243,37 @@ export default function TimelinePage() {
           <button
             type="button"
             onClick={() => setMainTab('feed')}
-            className={`rounded-t px-4 py-2 text-sm font-medium ${
+            className={`-mb-px border-b-2 pb-3 text-sm font-semibold transition-colors ${
               mainTab === 'feed'
-                ? 'border-b-2 border-primary text-primary'
-                : 'text-gray-500 hover:text-gray-700'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-gray-400 hover:text-gray-600'
             }`}
           >
             피드 관리
           </button>
         </div>
-        <Link to="/meeting/new">
-          <Button>+ 새 회의·이슈 추가</Button>
-        </Link>
+        <div className="pb-2">
+          <Link to="/meeting/new">
+            <Button>+ 새 회의·이슈 추가</Button>
+          </Link>
+        </div>
       </div>
 
       {mainTab === 'timeline' && (
         <>
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          {/* 필터바 */}
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs text-gray-500">회의:</span>
+              <span className="mr-1 text-xs font-medium text-gray-400">회의</span>
               {MEETING_FILTERS.map((f) => (
                 <button
                   key={f.key}
                   type="button"
                   onClick={() => setMeetingFilter(f.key)}
-                  className={`rounded-full border px-3 py-1 text-xs ${
+                  className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
                     meetingFilter === f.key
                       ? 'border-primary bg-primary-light text-primary'
-                      : 'border-gray-300 text-gray-600 hover:border-gray-400'
+                      : 'border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'
                   }`}
                 >
                   {f.label}
@@ -269,11 +281,11 @@ export default function TimelinePage() {
               ))}
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500">상태:</span>
+              <span className="text-xs font-medium text-gray-400">상태</span>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-                className="rounded border border-gray-300 px-2 py-1 text-xs focus:border-primary focus:outline-none"
+                className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 focus:border-primary focus:outline-none"
               >
                 <option value="all">전체</option>
                 <option value="draft">미배포</option>
@@ -283,89 +295,124 @@ export default function TimelinePage() {
           </div>
 
           {loading && (
-            <div className="py-12 text-center text-sm text-gray-400">로딩 중...</div>
+            <div className="py-16 text-center text-sm text-gray-400">로딩 중...</div>
           )}
 
           {error && !loading && (
-            <div className="py-12 text-center text-sm text-red-500">{error}</div>
+            <div className="py-16 text-center text-sm text-danger">{error}</div>
           )}
 
           {!loading && !error && sortedDates.length === 0 && (
-            <div className="py-12 text-center text-sm text-gray-400">등록된 항목이 없습니다.</div>
+            <div className="py-16 text-center text-sm text-gray-400">등록된 항목이 없습니다.</div>
           )}
 
           {!loading && !error && (
-            <div>
+            <div className="space-y-8">
               {sortedDates.map((date) => (
                 <div key={date}>
-                  <div className="mb-3 mt-4 flex items-center gap-3 first:mt-0">
-                    <span className="shrink-0 text-xs text-gray-400">{formatDateLabel(date)}</span>
-                    <div className="h-px flex-1 bg-gray-200" />
+                  {/* 날짜 구분선 (부가 정보 — 가장 연하게) */}
+                  <div className="mb-4 flex items-center gap-3">
+                    <span className="shrink-0 text-xs font-medium text-gray-400">
+                      {formatDateLabel(date)}
+                    </span>
+                    <div className="h-px flex-1 bg-gray-100" />
                   </div>
-                  {groupedMeetings[date].map((meeting) => {
-                    const todos = meeting.todos ?? []
-                    const sortedTodos = [...todos].sort((a, b) => a.sort_order - b.sort_order)
 
-                    return (
-                      <div key={meeting.id} className="mb-2 overflow-hidden rounded-xl border border-gray-200 bg-white">
-                        <button
-                          type="button"
-                          onClick={() => toggleCard(meeting.id)}
-                          className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-gray-50"
+                  <div className="space-y-3">
+                    {groupedMeetings[date].map((meeting) => {
+                      const todos = meeting.todos ?? []
+                      const sortedTodos = [...todos].sort((a, b) => a.sort_order - b.sort_order)
+                      const meetingType = getMeetingType(meeting)
+                      const isExpanded = expandedCards[meeting.id]
+
+                      return (
+                        <div
+                          key={meeting.id}
+                          className={`overflow-hidden rounded-xl border bg-white transition-colors ${
+                            isExpanded ? 'border-gray-300' : 'border-gray-200'
+                          }`}
                         >
-                          <div>
-                            <div className="text-xs text-gray-400">{getMeetingType(meeting)}</div>
-                            <div className="mt-0.5 text-sm font-medium text-gray-900">{meeting.title}</div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge variant={meeting.status === 'published' ? 'primary' : 'gray'}>
-                              {meeting.status === 'published' ? '배포' : '미배포'}
-                            </Badge>
-                            <span className="text-xs text-gray-500">Todo {todos.length}건</span>
-                            <span className="text-gray-400">{expandedCards[meeting.id] ? '▼' : '▶'}</span>
-                          </div>
-                        </button>
-                        {expandedCards[meeting.id] && (
-                          <div className="border-t border-gray-100 px-4 py-3">
-                            {sortedTodos.length > 0 ? (
-                              <table className="mb-3 w-full text-sm">
-                                <tbody>
+                          <button
+                            type="button"
+                            onClick={() => toggleCard(meeting.id)}
+                            className="flex w-full items-start justify-between gap-4 px-5 py-4 text-left hover:bg-gray-50"
+                          >
+                            <div className="min-w-0">
+                              {/* 카테고리 — 작은 점 + 연한 라벨 */}
+                              <div className="mb-1.5 flex items-center gap-1.5">
+                                <span
+                                  className={`h-1.5 w-1.5 rounded-full ${
+                                    MEETING_TYPE_DOT[meetingType] ?? 'bg-gray-300'
+                                  }`}
+                                />
+                                <span className="text-xs font-medium text-gray-400">
+                                  {meetingType}
+                                </span>
+                              </div>
+                              {/* 제목 — 가장 눈에 띄게 */}
+                              <h3 className="truncate text-base font-semibold text-gray-900">
+                                {meeting.title}
+                              </h3>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-3">
+                              {/* 상태 — 색상 뱃지 */}
+                              <Badge variant={meeting.status === 'published' ? 'success' : 'warning'}>
+                                {meeting.status === 'published' ? '배포' : '미배포'}
+                              </Badge>
+                              <span className="text-xs text-gray-400">Todo {todos.length}</span>
+                              <span className="text-gray-300">{isExpanded ? '▼' : '▶'}</span>
+                            </div>
+                          </button>
+
+                          {isExpanded && (
+                            <div className="border-t border-gray-100 px-5 py-4">
+                              {sortedTodos.length > 0 ? (
+                                <ul className="mb-4 space-y-1">
                                   {sortedTodos.map((todo, idx) => (
-                                    <tr key={todo.id} className="border-b border-gray-50 last:border-0">
-                                      <td className="w-8 py-1.5 text-gray-400">{idx + 1}</td>
-                                      <td className="py-1.5 text-gray-800">{todo.title}</td>
-                                      <td className="py-1.5 text-right text-gray-500">
+                                    <li
+                                      key={todo.id}
+                                      className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-gray-50"
+                                    >
+                                      <span className="w-5 shrink-0 text-xs font-medium text-gray-300">
+                                        {idx + 1}
+                                      </span>
+                                      <span className="flex-1 text-sm leading-relaxed text-gray-800">
+                                        {todo.title}
+                                      </span>
+                                      <span className="shrink-0 text-xs text-gray-400">
                                         {todo.people?.name ?? '—'}
-                                      </td>
-                                    </tr>
+                                      </span>
+                                    </li>
                                   ))}
-                                </tbody>
-                              </table>
-                            ) : (
-                              <p className="mb-3 text-xs text-gray-400">등록된 Todo가 없습니다.</p>
-                            )}
-                            <div className="flex items-center justify-between border-t border-gray-100 pt-3">
-                              <button
-                                type="button"
-                                onClick={() => navigate(`/meeting/${meeting.id}`)}
-                                className="text-xs text-primary hover:underline"
-                              >
-                                상세
-                              </button>
-                              <div className="flex gap-2">
-                                <Button variant="secondary" size="sm">
-                                  수정
-                                </Button>
-                                <Button variant="ghost" size="sm" className="text-danger">
-                                  삭제
-                                </Button>
+                                </ul>
+                              ) : (
+                                <p className="mb-4 px-2 text-xs text-gray-400">
+                                  등록된 Todo가 없습니다.
+                                </p>
+                              )}
+                              <div className="flex items-center justify-between border-t border-gray-100 pt-3">
+                                <button
+                                  type="button"
+                                  onClick={() => navigate(`/meeting/${meeting.id}`)}
+                                  className="text-xs font-medium text-primary hover:underline"
+                                >
+                                  상세 보기
+                                </button>
+                                <div className="flex gap-2">
+                                  <Button variant="secondary" size="sm">
+                                    수정
+                                  </Button>
+                                  <Button variant="ghost" size="sm" className="text-danger">
+                                    삭제
+                                  </Button>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
               ))}
             </div>
@@ -375,14 +422,14 @@ export default function TimelinePage() {
 
       {mainTab === 'feed' && (
         <>
-          <div className="mb-4 flex gap-1 border-b border-gray-200">
+          <div className="mb-6 flex gap-6 border-b border-gray-200">
             <button
               type="button"
               onClick={() => setFeedSubTab('byPerson')}
-              className={`px-4 py-2 text-sm ${
+              className={`-mb-px border-b-2 pb-3 text-sm font-semibold transition-colors ${
                 feedSubTab === 'byPerson'
-                  ? 'border-b-2 border-primary font-medium text-primary'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-gray-400 hover:text-gray-600'
               }`}
             >
               사람별
@@ -390,10 +437,10 @@ export default function TimelinePage() {
             <button
               type="button"
               onClick={() => setFeedSubTab('byTodo')}
-              className={`px-4 py-2 text-sm ${
+              className={`-mb-px border-b-2 pb-3 text-sm font-semibold transition-colors ${
                 feedSubTab === 'byTodo'
-                  ? 'border-b-2 border-primary font-medium text-primary'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-gray-400 hover:text-gray-600'
               }`}
             >
               Todo별
@@ -401,42 +448,51 @@ export default function TimelinePage() {
           </div>
 
           {feedLoading && (
-            <div className="py-12 text-center text-sm text-gray-400">로딩 중...</div>
+            <div className="py-16 text-center text-sm text-gray-400">로딩 중...</div>
           )}
 
           {feedError && !feedLoading && (
-            <div className="py-12 text-center text-sm text-red-500">{feedError}</div>
+            <div className="py-16 text-center text-sm text-danger">{feedError}</div>
           )}
 
           {!feedLoading && !feedError && feedSubTab === 'byPerson' && (
             <>
               {Object.keys(todosByPerson).length === 0 && (
-                <div className="py-12 text-center text-sm text-gray-400">등록된 항목이 없습니다.</div>
+                <div className="py-16 text-center text-sm text-gray-400">등록된 항목이 없습니다.</div>
               )}
               <div className="space-y-4">
                 {Object.entries(todosByPerson).map(([personName, todos]) => (
-                  <div key={personName} className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-                    <div className="flex items-center justify-between bg-gray-50 px-4 py-3">
-                      <span className="text-sm font-medium text-gray-900">{personName}</span>
-                      <span className="text-xs text-gray-500">Todo {todos.length}건</span>
+                  <div
+                    key={personName}
+                    className="overflow-hidden rounded-xl border border-gray-200 bg-white"
+                  >
+                    <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50 px-5 py-3">
+                      <span className="text-sm font-semibold text-gray-900">{personName}</span>
+                      <span className="text-xs text-gray-400">Todo {todos.length}건</span>
                     </div>
-                    <div className="divide-y divide-gray-100 px-4 py-3">
+                    <div className="divide-y divide-gray-100 px-5 py-1">
                       {todos.map((todo) => (
-                        <div key={todo.id} className="py-3 first:pt-0 last:pb-0">
+                        <div key={todo.id} className="py-4">
                           {todo.meetings && (
-                            <div className="mb-3 text-xs text-gray-500">
-                              📅 {todo.meetings.title} · {formatShortDate(todo.meetings.meeting_date)}
+                            <div className="mb-2 text-xs text-gray-400">
+                              {todo.meetings.title} · {formatShortDate(todo.meetings.meeting_date)}
                             </div>
                           )}
-                          <div className="rounded-lg border border-gray-200 p-3">
-                            <div className="mb-2 text-sm text-gray-800">
-                              {STATUS_EMOJI[todo.status]} {todo.title}{' '}
-                              {todo.status === 'in_progress' && '진행중'}
+                          <div className="rounded-lg border border-gray-200 p-4">
+                            <div className="mb-3 flex items-center gap-2">
+                              <Badge variant={TODO_STATUS_VARIANT[todo.status]}>
+                                {STATUS_LABELS[todo.status]}
+                              </Badge>
+                              <span className="text-sm font-medium text-gray-800">
+                                {todo.title}
+                              </span>
                             </div>
                             {todo.todo_memos && todo.todo_memos.length > 0 && (
-                              <div className="mb-3 text-xs text-gray-400">
-                                {formatMemoDate(todo.todo_memos[0].created_at)} &nbsp;{' '}
-                                {todo.todo_memos[0].content}
+                              <div className="mb-3 flex gap-2 text-xs leading-relaxed text-gray-500">
+                                <span className="shrink-0 text-gray-400">
+                                  {formatMemoDate(todo.todo_memos[0].created_at)}
+                                </span>
+                                <span>{todo.todo_memos[0].content}</span>
                               </div>
                             )}
                             <div className="flex gap-2">
@@ -447,7 +503,7 @@ export default function TimelinePage() {
                                 onChange={(e) =>
                                   setMemoInputs((prev) => ({ ...prev, [todo.id]: e.target.value }))
                                 }
-                                className="flex-1 rounded border border-gray-300 px-2 py-1 text-xs focus:border-primary focus:outline-none"
+                                className="flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs focus:border-primary focus:outline-none"
                               />
                               <Button
                                 size="sm"
@@ -470,7 +526,7 @@ export default function TimelinePage() {
           {!feedLoading && !feedError && feedSubTab === 'byTodo' && (
             <>
               {todosWithPeople.length === 0 && (
-                <div className="py-12 text-center text-sm text-gray-400">등록된 항목이 없습니다.</div>
+                <div className="py-16 text-center text-sm text-gray-400">등록된 항목이 없습니다.</div>
               )}
               <div className="space-y-4">
                 {todosWithPeople.map((todo) => {
@@ -479,28 +535,43 @@ export default function TimelinePage() {
                   )
 
                   return (
-                    <div key={todo.id} className="overflow-hidden rounded-xl border border-gray-200 bg-white p-4">
-                      <div className="mb-1 text-sm font-medium text-gray-900">{todo.title}</div>
-                      <div className="mb-4 text-xs text-gray-500">
-                        {todo.people?.name ?? '미지정'} · {STATUS_EMOJI[todo.status]}{' '}
-                        {STATUS_LABELS[todo.status]}
+                    <div
+                      key={todo.id}
+                      className="overflow-hidden rounded-xl border border-gray-200 bg-white p-5"
+                    >
+                      {/* 제목 — 가장 눈에 띄게 */}
+                      <h3 className="mb-2 text-base font-semibold text-gray-900">{todo.title}</h3>
+                      {/* 담당자 + 상태 */}
+                      <div className="mb-4 flex items-center gap-2">
+                        <Badge variant={TODO_STATUS_VARIANT[todo.status]}>
+                          {STATUS_LABELS[todo.status]}
+                        </Badge>
+                        <span className="text-xs text-gray-400">
+                          {todo.people?.name ?? '미지정'}
+                        </span>
                       </div>
                       {memos.length > 0 ? (
-                        <div className="mb-3 space-y-2">
+                        <div className="mb-4 space-y-3">
                           {memos.map((memo, idx) => (
-                            <div key={memo.id} className="flex gap-2 text-xs">
-                              <span className={idx === 0 ? 'text-primary' : 'text-gray-300'}>
+                            <div key={memo.id} className="flex gap-2.5 text-xs">
+                              <span
+                                className={`mt-1 shrink-0 ${
+                                  idx === 0 ? 'text-primary' : 'text-gray-300'
+                                }`}
+                              >
                                 {idx === 0 ? '●' : '○'}
                               </span>
-                              <div>
-                                <div className="text-gray-700">{formatMemoDate(memo.created_at)}</div>
-                                <div className="text-gray-400">{memo.content}</div>
+                              <div className="leading-relaxed">
+                                <div className="font-medium text-gray-500">
+                                  {formatMemoDate(memo.created_at)}
+                                </div>
+                                <div className="text-gray-700">{memo.content}</div>
                               </div>
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <p className="mb-3 text-xs text-gray-400">등록된 진행사항이 없습니다.</p>
+                        <p className="mb-4 text-xs text-gray-400">등록된 진행사항이 없습니다.</p>
                       )}
                       <div className="flex gap-2">
                         <input
@@ -510,7 +581,7 @@ export default function TimelinePage() {
                           onChange={(e) =>
                             setMemoInputs((prev) => ({ ...prev, [todo.id]: e.target.value }))
                           }
-                          className="flex-1 rounded border border-gray-300 px-2 py-1 text-xs focus:border-primary focus:outline-none"
+                          className="flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs focus:border-primary focus:outline-none"
                         />
                         <Button
                           size="sm"

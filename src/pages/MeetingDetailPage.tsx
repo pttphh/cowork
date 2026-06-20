@@ -25,10 +25,16 @@ const STATUS_VARIANTS: Record<TodoStatus, 'gray' | 'warning' | 'success'> = {
   done: 'success',
 }
 
-const STATUS_DOTS: Record<TodoStatus, string> = {
-  pending: '⚪',
-  in_progress: '🟡',
-  done: '🟢',
+const STATUS_DOT_COLORS: Record<TodoStatus, string> = {
+  pending: 'bg-gray-300',
+  in_progress: 'bg-warning',
+  done: 'bg-success',
+}
+
+const TYPE_DOT_COLORS: Record<string, string> = {
+  정기회의: 'bg-primary',
+  '프로젝트 미팅': 'bg-success',
+  개별이슈: 'bg-gray-400',
 }
 
 const STATUS_CYCLE: TodoStatus[] = ['pending', 'in_progress', 'done']
@@ -329,13 +335,17 @@ export default function MeetingDetailPage() {
         <div className="flex items-center gap-2">
           {!isEditing && (
             <>
-              <button type="button" onClick={handleStatusToggle}>
-                <Badge variant={meeting.status === 'published' ? 'primary' : 'gray'}>
+              <button
+                type="button"
+                onClick={handleStatusToggle}
+                className="transition-opacity hover:opacity-80"
+              >
+                <Badge variant={meeting.status === 'published' ? 'success' : 'warning'}>
                   {meeting.status === 'published' ? '배포' : '미배포'}
                 </Badge>
               </button>
               <Button variant="secondary" size="sm" onClick={startEditing}>
-                ✏ 편집
+                편집
               </Button>
               <Button
                 variant="ghost"
@@ -344,7 +354,7 @@ export default function MeetingDetailPage() {
                 onClick={handleDelete}
                 disabled={deleting}
               >
-                {deleting ? '삭제 중...' : '🗑 삭제'}
+                {deleting ? '삭제 중...' : '삭제'}
               </Button>
             </>
           )}
@@ -362,17 +372,20 @@ export default function MeetingDetailPage() {
       </div>
 
       {(meeting.notice || isEditing) && (
-        <div className="mb-4 rounded-lg border-l-4 border-yellow-400 bg-yellow-50 px-4 py-3 text-sm text-warning">
+        <div className="mb-4 flex gap-3 rounded-lg border border-warning/30 bg-warning-light px-4 py-3">
+          <span className="mt-0.5 inline-flex h-5 shrink-0 items-center rounded bg-warning/15 px-1.5 text-[11px] font-semibold uppercase tracking-wide text-warning">
+            공지
+          </span>
           {isEditing ? (
             <textarea
               value={editNotice}
               onChange={(e) => setEditNotice(e.target.value)}
               rows={2}
               placeholder="공지사항"
-              className="w-full rounded border border-yellow-300 bg-white px-2 py-1 text-sm focus:outline-none"
+              className="w-full rounded border border-warning/30 bg-white px-2 py-1 text-sm focus:outline-none"
             />
           ) : (
-            <>📢 공지사항: {meeting.notice}</>
+            <p className="text-sm leading-relaxed text-gray-700">{meeting.notice}</p>
           )}
         </div>
       )}
@@ -393,17 +406,119 @@ export default function MeetingDetailPage() {
           />
         </div>
       ) : (
-        <h1 className="mb-3 text-xl font-semibold text-gray-900">{meeting.title}</h1>
+        <div className="mb-3">
+          <div className="mb-1.5 flex items-center gap-1.5 text-sm text-gray-500">
+            <svg
+              className="h-4 w-4 text-gray-400"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <rect x="3" y="4" width="18" height="18" rx="2" />
+              <path d="M16 2v4M8 2v4M3 10h18" />
+            </svg>
+            {formatDateLabel(meeting.meeting_date)}
+          </div>
+          <h1 className="text-xl font-bold text-gray-900">{meeting.title}</h1>
+        </div>
       )}
 
-      <div className="mb-6 flex flex-wrap gap-4 text-sm text-gray-500">
-        <span>📅 {formatDateLabel(meeting.meeting_date)}</span>
-        {meeting.projects && <span>📁 {meeting.projects.name}</span>}
-        <span>
-          🏢 {meeting.projects?.business_units?.name ?? '—'} ·{' '}
-          {meeting.projects?.categories?.name ?? meetingType}
-        </span>
-        {attendees.length > 0 && <span>👥 {attendees.join(', ')}</span>}
+      <div className="mb-6 space-y-3 border-b border-gray-100 pb-5">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded bg-primary-light px-2.5 py-1 text-xs font-medium text-primary">
+            <svg
+              className="h-3.5 w-3.5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82Z" />
+              <path d="M7 7h.01" />
+            </svg>
+            {meeting.projects?.categories?.name ?? meetingType}
+          </span>
+          {meeting.projects?.business_units?.name && (
+            <span className="inline-flex items-center gap-1.5 rounded bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
+              <svg
+                className="h-3.5 w-3.5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <rect x="4" y="2" width="16" height="20" rx="2" />
+                <path d="M9 22v-4h6v4M8 6h.01M16 6h.01M8 10h.01M16 10h.01M8 14h.01M16 14h.01" />
+              </svg>
+              {meeting.projects.business_units.name}
+            </span>
+          )}
+        </div>
+
+        {meeting.projects?.name && (
+          <div>
+            <span className="inline-flex items-center gap-1.5 rounded border border-gray-300 bg-white px-2.5 py-1 text-xs text-gray-600">
+              <svg
+                className="h-3.5 w-3.5 text-gray-400"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <line x1="8" y1="6" x2="21" y2="6" />
+                <line x1="8" y1="12" x2="21" y2="12" />
+                <line x1="8" y1="18" x2="21" y2="18" />
+                <line x1="3" y1="6" x2="3.01" y2="6" />
+                <line x1="3" y1="12" x2="3.01" y2="12" />
+                <line x1="3" y1="18" x2="3.01" y2="18" />
+              </svg>
+              {meeting.projects.name}
+            </span>
+          </div>
+        )}
+
+        {attendees.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="flex items-center gap-1.5 text-gray-500">
+              <svg
+                className="h-4 w-4 text-gray-400"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+              참석자
+            </span>
+            {attendees.map((name) => (
+              <span
+                key={name}
+                className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700"
+              >
+                {name}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       <section className="mb-6">
@@ -438,29 +553,37 @@ export default function MeetingDetailPage() {
             ))}
           </div>
         ) : sortedAgendas.length === 0 ? (
-          <p className="text-sm text-gray-400">등록된 안건이 없습니다.</p>
+          <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-400">
+            등록된 안건이 없습니다.
+          </div>
         ) : (
-          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-            <table className="w-full text-sm">
+          <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+            <table className="w-full border-collapse text-sm">
               <thead>
-                <tr className="border-b border-gray-100 bg-gray-50">
-                  <th className="w-1/4 px-4 py-2 text-left font-medium text-gray-600">주제</th>
-                  <th className="px-4 py-2 text-left font-medium text-gray-600">내용</th>
+                <tr className="bg-gray-50">
+                  <th className="w-1/4 border-b border-gray-200 px-4 py-2.5 text-left text-xs font-medium text-gray-500">
+                    주제
+                  </th>
+                  <th className="border-b border-gray-200 px-4 py-2.5 text-left text-xs font-medium text-gray-500">
+                    내용
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {sortedAgendas.map((row) => (
-                  <tr key={row.id} className="border-b border-gray-50 last:border-0">
-                    <td className="px-4 py-3 align-top font-medium text-gray-800">{row.subject}</td>
-                    <td className="px-4 py-3 text-gray-700">
+                  <tr key={row.id} className="border-b border-gray-100 last:border-0">
+                    <td className="px-4 py-3.5 align-top font-semibold text-gray-900">
+                      {row.subject}
+                    </td>
+                    <td className="px-4 py-3.5 align-top text-gray-700">
                       {row.content ? (
-                        <ul className="list-disc pl-4">
+                        <ul className="list-disc space-y-1 pl-4 leading-relaxed marker:text-gray-300">
                           {row.content.split('\n').filter(Boolean).map((item, i) => (
                             <li key={i}>{item}</li>
                           ))}
                         </ul>
                       ) : (
-                        '—'
+                        <span className="text-gray-300">—</span>
                       )}
                     </td>
                   </tr>
@@ -476,30 +599,45 @@ export default function MeetingDetailPage() {
           실행 항목
         </h2>
         {sortedTodos.length === 0 ? (
-          <p className="text-sm text-gray-400">등록된 실행 항목이 없습니다.</p>
+          <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-400">
+            등록된 실행 항목이 없습니다.
+          </div>
         ) : (
-          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-            <table className="w-full text-sm">
+          <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+            <table className="w-full border-collapse text-sm">
               <thead>
-                <tr className="border-b border-gray-100 bg-gray-50">
-                  <th className="w-8 px-3 py-2 text-left font-medium text-gray-600">#</th>
-                  <th className="px-3 py-2 text-left font-medium text-gray-600">담당자</th>
-                  <th className="px-3 py-2 text-left font-medium text-gray-600">실행사항</th>
-                  <th className="px-3 py-2 text-left font-medium text-gray-600">내용</th>
-                  <th className="px-3 py-2 text-left font-medium text-gray-600">상태</th>
+                <tr className="bg-gray-50">
+                  <th className="w-10 border-b border-gray-200 px-3 py-2.5 text-left text-xs font-medium text-gray-500">
+                    #
+                  </th>
+                  <th className="border-b border-gray-200 px-3 py-2.5 text-left text-xs font-medium text-gray-500">
+                    담당자
+                  </th>
+                  <th className="border-b border-gray-200 px-3 py-2.5 text-left text-xs font-medium text-gray-500">
+                    실행사항
+                  </th>
+                  <th className="border-b border-gray-200 px-3 py-2.5 text-left text-xs font-medium text-gray-500">
+                    내용
+                  </th>
+                  <th className="border-b border-gray-200 px-3 py-2.5 text-left text-xs font-medium text-gray-500">
+                    상태
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {sortedTodos.map((item, idx) => (
-                  <tr key={item.id} className="border-b border-gray-50 last:border-0">
-                    <td className="px-3 py-2 text-gray-400">{idx + 1}</td>
-                    <td className="px-3 py-2 text-gray-700">{item.people?.name ?? '—'}</td>
-                    <td className="px-3 py-2 text-gray-800">{item.title}</td>
-                    <td className="px-3 py-2 text-gray-600">{item.detail ?? '—'}</td>
-                    <td className="px-3 py-2">
+                  <tr key={item.id} className="border-b border-gray-100 last:border-0">
+                    <td className="px-3 py-3 align-top text-gray-300">{idx + 1}</td>
+                    <td className="px-3 py-3 align-top text-gray-500">{item.people?.name ?? '—'}</td>
+                    <td className="px-3 py-3 align-top font-medium text-gray-900">{item.title}</td>
+                    <td className="px-3 py-3 align-top leading-relaxed text-gray-600">
+                      {item.detail ?? <span className="text-gray-300">—</span>}
+                    </td>
+                    <td className="px-3 py-3 align-top">
                       <button
                         type="button"
                         onClick={() => handleTodoStatusChange(item.id, cycleTodoStatus(item.status))}
+                        className="transition-opacity hover:opacity-80"
                       >
                         <Badge variant={STATUS_VARIANTS[item.status]}>
                           {STATUS_LABELS[item.status]}
@@ -529,29 +667,38 @@ export default function MeetingDetailPage() {
 
               return (
                 <div key={feed.id} className="rounded-xl border border-gray-200 bg-white p-4">
-                  <div className="mb-3 flex items-center justify-between">
-                    <div className="text-sm font-medium text-gray-900">
-                      {STATUS_DOTS[feed.status]} {feed.title} — {feed.people?.name ?? '미지정'}
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 text-sm">
+                      <span
+                        className={`h-2 w-2 shrink-0 rounded-full ${STATUS_DOT_COLORS[feed.status]}`}
+                      />
+                      <span className="font-semibold text-gray-900">{feed.title}</span>
+                      <span className="text-gray-400">{feed.people?.name ?? '미지정'}</span>
                     </div>
                     <button
                       type="button"
                       onClick={() =>
                         handleTodoStatusChange(feed.id, cycleTodoStatus(feed.status))
                       }
+                      className="shrink-0 transition-opacity hover:opacity-80"
                     >
                       <Badge variant={STATUS_VARIANTS[feed.status]}>
                         {STATUS_LABELS[feed.status]}
                       </Badge>
                     </button>
                   </div>
-                  <div className="mb-3 space-y-2">
-                    {memos.map((entry) => (
-                      <div key={entry.id} className="text-xs">
-                        <span className="text-gray-400">{formatMemoDate(entry.created_at)}</span>
-                        <span className="ml-2 text-gray-700">{entry.content}</span>
-                      </div>
-                    ))}
-                  </div>
+                  {memos.length > 0 && (
+                    <div className="mb-3 space-y-2 border-l-2 border-gray-100 pl-3">
+                      {memos.map((entry) => (
+                        <div key={entry.id} className="flex gap-2 text-xs leading-relaxed">
+                          <span className="shrink-0 tabular-nums text-gray-300">
+                            {formatMemoDate(entry.created_at)}
+                          </span>
+                          <span className="text-gray-700">{entry.content}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <div className="flex gap-2">
                     <input
                       type="text"

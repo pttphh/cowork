@@ -101,7 +101,6 @@ export default function Sidebar({ width, onResize }: SidebarProps) {
               })),
           ],
         }))
-        .filter((g) => g.items.length > 0)
 
       const personalItems = projects
         .filter((p) => !p.business_unit_id)

@@ -407,7 +407,7 @@ export default function MeetingDetailPage() {
         </div>
       ) : (
         <div className="mb-3">
-          <div className="mb-2 flex items-center gap-1.5 text-sm font-medium text-gray-600">
+          <div className="mb-1.5 flex items-center gap-1.5 text-sm text-gray-500">
             <svg
               className="h-4 w-4 text-gray-400"
               viewBox="0 0 24 24"
@@ -423,31 +423,70 @@ export default function MeetingDetailPage() {
             </svg>
             {formatDateLabel(meeting.meeting_date)}
           </div>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
-              <span
-                className={`h-2 w-2 rounded-full ${TYPE_DOT_COLORS[meetingType] ?? 'bg-gray-400'}`}
-              />
-              {meeting.projects?.categories?.name ?? meetingType}
-            </span>
-            <h1 className="text-xl font-semibold text-gray-900">{meeting.title}</h1>
-          </div>
+          <h1 className="text-xl font-bold text-gray-900">{meeting.title}</h1>
         </div>
       )}
 
       <div className="mb-6 space-y-3 border-b border-gray-100 pb-5">
-        {(meeting.projects?.business_units?.name || meeting.projects?.name) && (
-          <div className="flex flex-wrap items-center gap-2">
-            {meeting.projects?.business_units?.name && (
-              <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700">
-                {meeting.projects.business_units.name}
-              </span>
-            )}
-            {meeting.projects?.name && (
-              <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700">
-                {meeting.projects.name}
-              </span>
-            )}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded bg-primary-light px-2.5 py-1 text-xs font-medium text-primary">
+            <svg
+              className="h-3.5 w-3.5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82Z" />
+              <path d="M7 7h.01" />
+            </svg>
+            {meeting.projects?.categories?.name ?? meetingType}
+          </span>
+          {meeting.projects?.business_units?.name && (
+            <span className="inline-flex items-center gap-1.5 rounded bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
+              <svg
+                className="h-3.5 w-3.5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <rect x="4" y="2" width="16" height="20" rx="2" />
+                <path d="M9 22v-4h6v4M8 6h.01M16 6h.01M8 10h.01M16 10h.01M8 14h.01M16 14h.01" />
+              </svg>
+              {meeting.projects.business_units.name}
+            </span>
+          )}
+        </div>
+
+        {meeting.projects?.name && (
+          <div>
+            <span className="inline-flex items-center gap-1.5 rounded border border-gray-300 bg-white px-2.5 py-1 text-xs text-gray-600">
+              <svg
+                className="h-3.5 w-3.5 text-gray-400"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <line x1="8" y1="6" x2="21" y2="6" />
+                <line x1="8" y1="12" x2="21" y2="12" />
+                <line x1="8" y1="18" x2="21" y2="18" />
+                <line x1="3" y1="6" x2="3.01" y2="6" />
+                <line x1="3" y1="12" x2="3.01" y2="12" />
+                <line x1="3" y1="18" x2="3.01" y2="18" />
+              </svg>
+              {meeting.projects.name}
+            </span>
           </div>
         )}
 

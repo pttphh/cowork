@@ -12,45 +12,17 @@ export default function App() {
     <Routes>
       <Route path="/" element={<LoginPage />} />
       <Route
-        path="/timeline"
         element={
           <ProtectedRoute>
-            <Layout>
-              <TimelinePage />
-            </Layout>
+            <Layout />
           </ProtectedRoute>
         }
-      />
-      <Route
-        path="/meeting/new"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <NewMeetingPage />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/meeting/:id"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <MeetingDetailPage />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/settings"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <SettingsPage />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
+      >
+        <Route path="/timeline" element={<TimelinePage />} />
+        <Route path="/meeting/new" element={<NewMeetingPage />} />
+        <Route path="/meeting/:id" element={<MeetingDetailPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+      </Route>
     </Routes>
   )
 }

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useOutletContext } from 'react-router-dom'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
+import { LayoutOutletContext } from '../components/layout/Layout'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { Meeting, TodoStatus, TodoWithRelations } from '../types'
@@ -81,6 +82,8 @@ function matchesStatusFilter(meeting: Meeting, filter: StatusFilter) {
 export default function TimelinePage() {
   const navigate = useNavigate()
   const { profile } = useAuth()
+  const { selectedProjectId, selectedProjectName } =
+    useOutletContext<LayoutOutletContext>()
   const [mainTab, setMainTab] = useState<MainTab>('timeline')
   const [feedSubTab, setFeedSubTab] = useState<FeedSubTab>('byPerson')
   const [meetingFilter, setMeetingFilter] = useState<MeetingFilter>('all')
@@ -97,6 +100,9 @@ export default function TimelinePage() {
 
   useEffect(() => {
     loadMeetings()
+  }, [selectedProjectId])
+
+  useEffect(() => {
     loadFeedData()
   }, [])
 
@@ -105,7 +111,7 @@ export default function TimelinePage() {
     setError('')
 
     try {
-      const { data, error: fetchError } = await supabase
+      let query = supabase
         .from('meetings')
         .select(`
           *,
@@ -113,7 +119,14 @@ export default function TimelinePage() {
           meeting_agendas(id, subject, content, sort_order),
           todos(id, title, detail, status, sort_order, people(name))
         `)
-        .order('meeting_date', { ascending: false })
+
+      if (selectedProjectId) {
+        query = query.eq('project_id', selectedProjectId)
+      }
+
+      const { data, error: fetchError } = await query.order('meeting_date', {
+        ascending: false,
+      })
 
       if (fetchError) {
         setError('데이터를 불러올 수 없습니다.')
@@ -196,6 +209,23 @@ export default function TimelinePage() {
     setExpandedCards((prev) => ({ ...prev, [id]: !prev[id] }))
   }
 
+  async function handleDeleteMeeting(meetingId: string) {
+    if (!confirm('이 회의를 삭제하시겠습니까?')) return
+
+    const { error: deleteError } = await supabase
+      .from('meetings')
+      .delete()
+      .eq('id', meetingId)
+
+    if (deleteError) {
+      console.error(deleteError)
+      alert('삭제에 실패했습니다.')
+      return
+    }
+
+    loadMeetings()
+  }
+
   async function handleAddMemo(todoId: string) {
     const content = memoInputs[todoId]?.trim()
     if (!content || !profile) return
@@ -226,6 +256,10 @@ export default function TimelinePage() {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-8">
+      <h1 className="mb-6 text-xl font-semibold text-gray-900">
+        {selectedProjectName ?? '전체 타임라인'}
+      </h1>
+
       {/* 상단 탭 + 액션 */}
       <div className="mb-8 flex items-end justify-between border-b border-gray-200">
         <div className="flex gap-6">
@@ -399,10 +433,19 @@ export default function TimelinePage() {
                                   상세 보기
                                 </button>
                                 <div className="flex gap-2">
-                                  <Button variant="secondary" size="sm">
+                                  <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => navigate(`/meeting/${meeting.id}`)}
+                                  >
                                     수정
                                   </Button>
-                                  <Button variant="ghost" size="sm" className="text-danger">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-danger"
+                                    onClick={() => handleDeleteMeeting(meeting.id)}
+                                  >
                                     삭제
                                   </Button>
                                 </div>

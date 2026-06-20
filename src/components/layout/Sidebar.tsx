@@ -14,9 +14,16 @@ const ROLE_LABELS: Record<UserRole, string> = {
 interface SidebarProps {
   width: number
   onResize: (width: number) => void
+  selectedProjectId: string | null
+  onSelectProject: (id: string | null, name?: string | null) => void
 }
 
-export default function Sidebar({ width, onResize }: SidebarProps) {
+export default function Sidebar({
+  width,
+  onResize,
+  selectedProjectId,
+  onSelectProject,
+}: SidebarProps) {
   const location = useLocation()
   const navigate = useNavigate()
   const { profile, signOut } = useAuth()
@@ -24,7 +31,6 @@ export default function Sidebar({ width, onResize }: SidebarProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
-  const [selectedId, setSelectedId] = useState<string | null>(null)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [isResizing, setIsResizing] = useState(false)
 
@@ -133,7 +139,14 @@ export default function Sidebar({ width, onResize }: SidebarProps) {
     setExpanded((prev) => ({ ...prev, [id]: !prev[id] }))
   }
 
-  const isTimelineActive = location.pathname === '/timeline'
+  const isTimelineActive = location.pathname === '/timeline' && !selectedProjectId
+
+  function handleSelectItem(id: string, name: string) {
+    onSelectProject(id, name)
+    if (location.pathname !== '/timeline') {
+      navigate('/timeline')
+    }
+  }
 
   async function handleSignOut() {
     setDropdownOpen(false)
@@ -197,6 +210,7 @@ export default function Sidebar({ width, onResize }: SidebarProps) {
       <nav className="flex-1 overflow-y-auto p-2">
         <Link
           to="/timeline"
+          onClick={() => onSelectProject(null, null)}
           className={`mb-2 block rounded px-3 py-2 text-sm ${
             isTimelineActive
               ? 'border-r-2 border-primary bg-primary-light font-medium text-primary'
@@ -243,9 +257,9 @@ export default function Sidebar({ width, onResize }: SidebarProps) {
                     <li key={item.id}>
                       <button
                         type="button"
-                        onClick={() => setSelectedId(item.id)}
+                        onClick={() => handleSelectItem(item.id, item.name)}
                         className={`flex w-full items-center gap-1.5 rounded px-3 py-1.5 text-left text-sm ${
-                          selectedId === item.id
+                          selectedProjectId === item.id
                             ? 'border-r-2 border-primary bg-primary-light font-medium text-primary'
                             : 'text-gray-700 hover:bg-gray-100'
                         }`}
